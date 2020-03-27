@@ -1,0 +1,21 @@
+id: Pagination
+name: JSON Pagination
+description: Paginate JSON response
+category: Custom
+type: custom
+resourceLevelSupported: true
+encryptionSupported: false
+standalone: true
+requiredCharacteristics: []
+providedCharacteristics: []
+configuration:
+  - description: "Specify the number of records to return in one request, specified as an integer from 1 to 100"
+    name: "Limit"
+    propertyName: limit
+    sensitive: false
+    type: int
+    minimumValue: 1
+    maximumValue: 100
+    defaultValue: "5"
+    allowMultiple: false
+    optional: false

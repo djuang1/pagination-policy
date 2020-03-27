@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:http-policy="http://www.mulesoft.org/schema/mule/http-policy"
+      xmlns:http-transform="http://www.mulesoft.org/schema/mule/http-policy-transform"
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+               http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+               http://www.mulesoft.org/schema/mule/http-policy http://www.mulesoft.org/schema/mule/http-policy/current/mule-http-policy.xsd
+               http://www.mulesoft.org/schema/mule/http-policy-transform http://www.mulesoft.org/schema/mule/http-policy-transform/current/mule-http-policy-transform.xsd">
+
+    <http-policy:proxy name="{{{policyId}}}-custom-policy">
+        <http-policy:source>
+
+            <set-variable value='#[attributes.localAddress replace "/" with (attributes.scheme ++ "://") ++ attributes.requestPath]' variableName="self"/>
+            <set-variable value='#[attributes.localAddress replace "/" with (attributes.scheme ++ "://")]' variableName="base"/>
+            <set-variable value="#[attributes.requestPath]" variableName="path"/>
+
+            <set-variable variableName="index" value="#[(attributes.queryParams.index as Number) default 1]"/>
+
+            <http-policy:execute-next/>
+
+            <set-variable value="#[({{ limit }} as Number) default 5]" variableName="limit" />
+
+            <ee:transform>
+                <ee:message >
+                    <ee:set-payload ><![CDATA[%dw 2.0
+var total = sizeOf(payload)
+var index = if (vars.index <= 1) 0 else (vars.index - 1)
+var resultStart = (index * vars.limit) as Number
+var end = (resultStart + (vars.limit - 1)) as Number
+var resultEnd = if (end >= total) (total - 1) else end
+
+output application/json
+---
+{
+	"_links": {
+	    "self": vars.base,
+		("next": vars.path ++ "?limit=" ++ vars.limit ++ "&index=" ++ (index + 2)) if (end < total),
+		("prev": vars.path ++ "?limit=" ++ vars.limit ++ "&index=" ++ index) if (index >= 1)
+	},
+	limit: vars.limit,
+	results: if (vars.limit > total) payload else payload [resultStart to resultEnd]
+}
+]]></ee:set-payload>
+                </ee:message>
+            </ee:transform>
+
+
+        </http-policy:source>
+    </http-policy:proxy>
+</mule>
